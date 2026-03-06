@@ -23,11 +23,18 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
     if (typeof window === "undefined") return false;
     return localStorage.getItem(storageKey) === "true";
   });
+  const [likeCount, setLikeCount] = useState(() => {
+    if (typeof window === "undefined") return 0;
+    return parseInt(localStorage.getItem(`${storageKey}-count`) ?? "0", 10);
+  });
 
   const handleLike = () => {
     const next = !liked;
+    const nextCount = next ? likeCount + 1 : Math.max(0, likeCount - 1);
     setLiked(next);
+    setLikeCount(nextCount);
     localStorage.setItem(storageKey, String(next));
+    localStorage.setItem(`${storageKey}-count`, String(nextCount));
   };
 
   return (
@@ -111,6 +118,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                 </svg>
               )}
             </motion.span>
+            {likeCount > 0 && <span>{likeCount}</span>}
           </button>
         </div>
       </div>
