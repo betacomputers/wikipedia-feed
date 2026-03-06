@@ -1,4 +1,4 @@
-import ArticleFeed from "@/components/articlefeed";
+import ArticleFeed from "@/components/articleFeed";
 
 export default function Home() {
   return (
