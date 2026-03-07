@@ -35,7 +35,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
             alt={article.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f0f] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#0f0f0f] via-transparent to-transparent" />
         </div>
       )}
 

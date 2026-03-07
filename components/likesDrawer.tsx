@@ -35,7 +35,7 @@ export default function LikesDrawer({ open, onClose }: LikesDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
-            className="fixed top-0 right-0 h-full w-full sm:w-[400px] bg-[#0a0a0a] border-l border-[#222] z-50 flex flex-col">
+            className="fixed top-0 right-0 h-full w-full sm:w-400 bg-[#0a0a0a] border-l border-[#222] z-50 flex flex-col">
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-[#1a1a1a]">
               <div>
@@ -95,10 +95,10 @@ export default function LikesDrawer({ open, onClose }: LikesDrawerProps) {
                         <img
                           src={article.thumbnail}
                           alt={article.title}
-                          className="w-14 h-14 rounded-lg object-cover flex-shrink-0"
+                          className="w-14 h-14 rounded-lg object-cover shrink-0"
                         />
                       ) : (
-                        <div className="w-14 h-14 rounded-lg bg-[#1a1a1a] flex-shrink-0 flex items-center justify-center text-[#333]">
+                        <div className="w-14 h-14 rounded-lg bg-[#1a1a1a] shrink-0 flex items-center justify-center text-[#333]">
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             fill="none"
@@ -135,7 +135,7 @@ export default function LikesDrawer({ open, onClose }: LikesDrawerProps) {
                       <button
                         onClick={() => toggle(article)}
                         aria-label="Unlike"
-                        className="text-red-400/60 hover:text-red-400 transition-colors flex-shrink-0 pt-0.5">
+                        className="text-red-400/60 hover:text-red-400 transition-colors shrink-0 pt-0.5">
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
                           viewBox="0 0 24 24"
