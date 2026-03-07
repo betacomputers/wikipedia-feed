@@ -18,7 +18,8 @@ interface ArticleCardProps {
 }
 
 export default function ArticleCard({ article, index }: ArticleCardProps) {
-  const { toggle, isLiked } = useLikes();
+  const { toggle, isLiked, getCount } = useLikes();
+  const count = getCount(article.id);
   const liked = isLiked(article.id);
 
   return (
@@ -69,8 +70,8 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                 : "bg-transparent border-[#333] text-[#666] hover:border-[#555] hover:text-white"
             }`}>
             <motion.span
-              animate={liked ? { scale: [1, 1.4, 1] } : { scale: 1 }}
-              transition={{ duration: 0.3 }}
+              animate={liked ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+              transition={{ duration: 0.2 }}
               className="flex items-center">
               {liked ? (
                 <svg
@@ -96,6 +97,7 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                 </svg>
               )}
             </motion.span>
+            {count > 0 && <span>{count}</span>}
           </button>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ArticleFeed from "@/components/articleFeed";
 import LikesDrawer from "@/components/likesDrawer";
 import { useLikes } from "@/hooks/useLikes";
@@ -8,7 +8,14 @@ import { useLikes } from "@/hooks/useLikes";
 export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const { liked } = useLikes();
-  const likeCount = Object.keys(liked).length;
+  // const likeCount = Object.keys(liked).length;
+
+  useEffect(() => {
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <main className="min-h-screen px-4 py-12 max-w-6xl mx-auto">
