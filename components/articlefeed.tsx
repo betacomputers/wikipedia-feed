@@ -24,11 +24,12 @@ export default function ArticleFeed() {
   const fetchNextPageRef = useRef(fetchNextPage);
   fetchNextPageRef.current = fetchNextPage;
 
+  // Infinite scroll handler
   useEffect(() => {
     function onScroll() {
       const scrolledTo = window.scrollY + window.innerHeight;
       const pageHeight = document.documentElement.scrollHeight;
-      const nearBottom = pageHeight - scrolledTo < 300;
+      const nearBottom = pageHeight - scrolledTo < 200;
 
       if (nearBottom && !isFetchingRef.current) {
         fetchNextPageRef.current();
