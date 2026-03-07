@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useLikes } from "@/hooks/useLikes";
 
 export interface Article {
   id: number;
@@ -18,24 +18,8 @@ interface ArticleCardProps {
 }
 
 export default function ArticleCard({ article, index }: ArticleCardProps) {
-  const storageKey = `like-${article.id}`;
-  const [liked, setLiked] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return localStorage.getItem(storageKey) === "true";
-  });
-  const [likeCount, setLikeCount] = useState(() => {
-    if (typeof window === "undefined") return 0;
-    return parseInt(localStorage.getItem(`${storageKey}-count`) ?? "0", 10);
-  });
-
-  const handleLike = () => {
-    const next = !liked;
-    const nextCount = next ? likeCount + 1 : Math.max(0, likeCount - 1);
-    setLiked(next);
-    setLikeCount(nextCount);
-    localStorage.setItem(storageKey, String(next));
-    localStorage.setItem(`${storageKey}-count`, String(nextCount));
-  };
+  const { toggle, isLiked } = useLikes();
+  const liked = isLiked(article.id);
 
   return (
     <motion.article
@@ -43,7 +27,6 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: (index % 10) * 0.07, ease: "easeOut" }}
       className="group relative bg-[#0f0f0f] border border-[#222] rounded-2xl overflow-hidden hover:border-[#444] transition-colors duration-300">
-      {/* Thumbnail */}
       {article.thumbnail && (
         <div className="relative h-48 overflow-hidden">
           <img
@@ -51,27 +34,23 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
             alt={article.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           />
-          <div className="absolute inset-0 bg-linear-to-t from-[#0f0f0f] via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0f0f0f] via-transparent to-transparent" />
         </div>
       )}
 
       <div className="p-6">
-        {/* Description tag */}
         {article.description && (
           <span className="inline-block text-xs font-mono uppercase tracking-widest text-[#888] mb-3 border border-[#333] rounded-full px-3 py-1">
             {article.description}
           </span>
         )}
 
-        {/* Title */}
         <h2 className="text-xl font-semibold text-white mb-3 leading-snug font-serif">
           {article.title}
         </h2>
 
-        {/* Extract / blurb */}
         <p className="text-[#aaa] text-sm leading-relaxed line-clamp-4 mb-6">{article.extract}</p>
 
-        {/* Footer actions */}
         <div className="flex items-center justify-between">
           <a
             href={article.url}
@@ -81,9 +60,8 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
             Read on Wikipedia →
           </a>
 
-          {/* Like button */}
           <button
-            onClick={handleLike}
+            onClick={() => toggle(article)}
             aria-label={liked ? "Unlike" : "Like"}
             className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-mono transition-all duration-200 border ${
               liked
@@ -118,7 +96,6 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
                 </svg>
               )}
             </motion.span>
-            {likeCount > 0 && <span>{likeCount}</span>}
           </button>
         </div>
       </div>
