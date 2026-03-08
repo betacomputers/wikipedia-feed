@@ -8,7 +8,8 @@ import { useLikes } from "@/hooks/useLikes";
 interface FullscreenReaderProps {
   articles: Article[];
   startIndex: number;
-  onClose: () => void;
+  onClose: (currentIndex: number) => void;
+  onNearEnd: () => void;
 }
 
 async function fetchLongExtract(title: string): Promise<string> {
@@ -37,8 +38,7 @@ function FullscreenCard({ article, active }: { article: Article; active: boolean
   }, [active, article.title]);
 
   return (
-    <div className="relative w-full h-full shrink-0 flex flex-col">
-      {/* Background image */}
+    <div className="relative w-full h-full flex flex-col">
       {article.thumbnail && (
         <div className="absolute inset-0">
           <img src={article.thumbnail} alt="" className="w-full h-full object-cover" />
@@ -47,7 +47,6 @@ function FullscreenCard({ article, active }: { article: Article; active: boolean
       )}
       {!article.thumbnail && <div className="absolute inset-0 bg-[#0a0a0a]" />}
 
-      {/* Content */}
       <div className="relative flex-1 flex flex-col justify-end px-6 pb-16 pt-24 max-w-2xl mx-auto w-full">
         {article.description && (
           <span className="text-xs font-mono uppercase tracking-widest text-white/50 mb-3">
@@ -109,19 +108,39 @@ function FullscreenCard({ article, active }: { article: Article; active: boolean
   );
 }
 
-export default function FullscreenReader({ articles, startIndex, onClose }: FullscreenReaderProps) {
+export default function FullscreenReader({
+  articles,
+  startIndex,
+  onClose,
+  onNearEnd,
+}: FullscreenReaderProps) {
   const [current, setCurrent] = useState(startIndex);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [exiting, setExiting] = useState(false);
   const isScrolling = useRef(false);
+  const articlesRef = useRef(articles);
+  articlesRef.current = articles;
 
-  // Close on Escape
+  // Trigger load when near end
+  useEffect(() => {
+    if (current >= articles.length - 2) {
+      onNearEnd();
+    }
+  }, [current, articles.length, onNearEnd]);
+
+  // Close with zoom-out
+  const handleClose = () => {
+    setExiting(true);
+    setTimeout(() => onClose(current), 350);
+  };
+
+  // Escape key
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [current]);
 
   // Lock body scroll
   useEffect(() => {
@@ -133,15 +152,12 @@ export default function FullscreenReader({ articles, startIndex, onClose }: Full
 
   // Wheel / touch snap with bounce
   useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (isScrolling.current) return;
       if (e.deltaY > 30) {
         isScrolling.current = true;
-        setCurrent((c) => Math.min(c + 1, articles.length - 1));
+        setCurrent((c) => Math.min(c + 1, articlesRef.current.length - 1));
         setTimeout(() => {
           isScrolling.current = false;
         }, 700);
@@ -163,7 +179,7 @@ export default function FullscreenReader({ articles, startIndex, onClose }: Full
       const delta = touchStartY - e.changedTouches[0].clientY;
       if (delta > 50) {
         isScrolling.current = true;
-        setCurrent((c) => Math.min(c + 1, articles.length - 1));
+        setCurrent((c) => Math.min(c + 1, articlesRef.current.length - 1));
         setTimeout(() => {
           isScrolling.current = false;
         }, 700);
@@ -176,66 +192,49 @@ export default function FullscreenReader({ articles, startIndex, onClose }: Full
       }
     };
 
-    el.addEventListener("wheel", onWheel, { passive: false });
-    el.addEventListener("touchstart", onTouchStart);
-    el.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("wheel", onWheel, { passive: false });
+    window.addEventListener("touchstart", onTouchStart);
+    window.addEventListener("touchend", onTouchEnd);
     return () => {
-      el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchend", onTouchEnd);
     };
-  }, [articles.length]);
+  }, []);
 
   return (
-    <AnimatePresence>
+    <motion.div
+      initial={{ scale: 0.92, opacity: 0 }}
+      animate={exiting ? { scale: 0.92, opacity: 0 } : { scale: 1, opacity: 1 }}
+      transition={{ type: "spring", stiffness: 300, damping: 30 }}
+      className="fixed inset-0 z-50 bg-black overflow-hidden">
+      {/* Close button */}
+      <button
+        onClick={handleClose}
+        className="absolute top-5 right-5 z-10 text-white/40 hover:text-white transition-colors">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth="1.5"
+          stroke="currentColor"
+          className="size-6">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+        </svg>
+      </button>
+
+      {/* Cards */}
       <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
-        className="fixed inset-0 z-50 bg-black overflow-hidden"
-        ref={containerRef}>
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 z-10 text-white/40 hover:text-white transition-colors">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="1.5"
-            stroke="currentColor"
-            className="size-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-          </svg>
-        </button>
-
-        {/* Progress dots */}
-        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
-          {articles.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setCurrent(i)}
-              className={`rounded-full transition-all duration-300 ${
-                i === current ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/30"
-              }`}
-            />
-          ))}
-        </div>
-
-        {/* Cards with spring animation */}
-        <motion.div
-          className="flex flex-col w-full"
-          style={{ height: `${articles.length * 100}vh` }}
-          animate={{ y: `-${current * 100}vh` }}
-          transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}>
-          {articles.map((article, i) => (
-            <div key={article.id} style={{ height: "100vh", flexShrink: 0 }}>
-              <FullscreenCard article={article} active={i === current} />
-            </div>
-          ))}
-        </motion.div>
+        className="flex flex-col w-full"
+        style={{ height: `${articles.length * 100}vh` }}
+        animate={{ y: `-${current * 100}vh` }}
+        transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}>
+        {articles.map((article, i) => (
+          <div key={article.id} style={{ height: "100vh", flexShrink: 0 }}>
+            <FullscreenCard article={article} active={i === current} />
+          </div>
+        ))}
       </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 }
