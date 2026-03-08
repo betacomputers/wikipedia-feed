@@ -121,26 +121,35 @@ export default function FullscreenReader({
   articlesRef.current = articles;
 
   // Trigger load when near end
+  const onNearEndRef = useRef(onNearEnd);
+  onNearEndRef.current = onNearEnd;
+
   useEffect(() => {
     if (current >= articles.length - 2) {
-      onNearEnd();
+      onNearEndRef.current();
     }
-  }, [current, articles.length, onNearEnd]);
+  }, [current, articles.length]);
 
   // Close with zoom-out
   const handleClose = () => {
     setExiting(true);
-    setTimeout(() => onClose(current), 350);
+    setTimeout(() => onClose(currentRef.current), 350);
   };
 
   // Escape key
+  const currentRef = useRef(current);
+  currentRef.current = current;
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "Escape") handleClose();
+      if (e.key === "Escape") {
+        setExiting(true);
+        setTimeout(() => onClose(currentRef.current), 350);
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [current]);
+  }, []);
 
   // Lock body scroll
   useEffect(() => {
@@ -155,13 +164,13 @@ export default function FullscreenReader({
     const onWheel = (e: WheelEvent) => {
       e.preventDefault();
       if (isScrolling.current) return;
-      if (e.deltaY > 30) {
+      if (e.deltaY > 5) {
         isScrolling.current = true;
         setCurrent((c) => Math.min(c + 1, articlesRef.current.length - 1));
         setTimeout(() => {
           isScrolling.current = false;
         }, 700);
-      } else if (e.deltaY < -30) {
+      } else if (e.deltaY < -5) {
         isScrolling.current = true;
         setCurrent((c) => Math.max(c - 1, 0));
         setTimeout(() => {
@@ -227,6 +236,7 @@ export default function FullscreenReader({
       <motion.div
         className="flex flex-col w-full"
         style={{ height: `${articles.length * 100}vh` }}
+        initial={{ y: `-${startIndex * 100}vh` }}
         animate={{ y: `-${current * 100}vh` }}
         transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}>
         {articles.map((article, i) => (
