@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import ArticleCard, { Article } from "./articleCard";
+import FullscreenReader from "./fullscreenReader";
 
 async function fetchArticles() {
   const res = await fetch("/api/wikipedia");
@@ -17,6 +18,8 @@ export default function ArticleFeed() {
     initialPageParam: 0,
     getNextPageParam: (_lastPage, pages) => pages.length,
   });
+
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
   const isFetchingRef = useRef(isFetchingNextPage);
   isFetchingRef.current = isFetchingNextPage;
@@ -60,9 +63,21 @@ export default function ArticleFeed() {
 
   return (
     <div>
+      {expandedIndex !== null && (
+        <FullscreenReader
+          articles={allArticles}
+          startIndex={expandedIndex}
+          onClose={() => setExpandedIndex(null)}
+        />
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {allArticles.map((article, i) => (
-          <ArticleCard key={`${article.id}-${i}`} article={article} index={i} />
+          <ArticleCard
+            key={`${article.id}-${i}`}
+            article={article}
+            index={i}
+            onExpand={() => setExpandedIndex(i)}
+          />
         ))}
         {isFetchingNextPage && <LoadingSkeletons />}
       </div>
