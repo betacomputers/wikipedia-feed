@@ -4,17 +4,22 @@ import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import ArticleCard, { Article } from "./articleCard";
 import FullscreenReader from "./fullscreenReader";
+import CategoryFilter from "./categoryFilter";
 
-async function fetchArticles() {
-  const res = await fetch("/api/wikipedia");
+async function fetchArticles({ pageParam, category }: { pageParam: number; category: string }) {
+  const params = new URLSearchParams({ page: String(pageParam) });
+  if (category !== "All") params.set("category", category);
+  const res = await fetch(`/api/wikipedia?${params}`);
   if (!res.ok) throw new Error("Failed to fetch");
   return res.json() as Promise<{ articles: Article[] }>;
 }
 
 export default function ArticleFeed() {
+  const [category, setCategory] = useState("All");
+
   const { data, fetchNextPage, isFetchingNextPage, status } = useInfiniteQuery({
-    queryKey: ["articles"],
-    queryFn: fetchArticles,
+    queryKey: ["articles", category],
+    queryFn: ({ pageParam }) => fetchArticles({ pageParam: pageParam as number, category }),
     initialPageParam: 0,
     getNextPageParam: (_lastPage, pages) => pages.length,
   });
@@ -42,7 +47,12 @@ export default function ArticleFeed() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Find the card closest to center of viewport to open fullscreen at
+  // Reset scroll and expanded state when category changes
+  useEffect(() => {
+    setExpandedIndex(null);
+    window.scrollTo(0, 0);
+  }, [category]);
+
   const openFullscreen = () => {
     const center = window.scrollY + window.innerHeight / 2;
     let closest = 0;
@@ -71,24 +81,10 @@ export default function ArticleFeed() {
 
   const allArticles = data?.pages.flatMap((p) => p.articles) ?? [];
 
-  if (status === "pending") {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <LoadingSkeletons />
-      </div>
-    );
-  }
-
-  if (status === "error") {
-    return (
-      <p className="text-center text-red-400 font-mono mt-20">
-        Failed to load articles. Check your connection.
-      </p>
-    );
-  }
-
   return (
     <div>
+      <CategoryFilter selected={category} onChange={setCategory} />
+
       {expandedIndex !== null && (
         <FullscreenReader
           articles={allArticles}
@@ -100,18 +96,29 @@ export default function ArticleFeed() {
         />
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {allArticles.map((article, i) => (
-          <div
-            key={`${article.id}-${i}`}
-            ref={(el) => {
-              cardRefs.current[i] = el;
-            }}>
-            <ArticleCard article={article} index={i} />
-          </div>
-        ))}
-        {isFetchingNextPage && <LoadingSkeletons />}
-      </div>
+      {status === "pending" ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <LoadingSkeletons />
+        </div>
+      ) : status === "error" ? (
+        <p className="text-center text-red-400 font-mono mt-20">
+          Failed to load articles. Check your connection.
+        </p>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {allArticles.map((article, i) => (
+            <div
+              key={`${article.id}-${i}`}
+              id={`card-${i}`}
+              ref={(el) => {
+                cardRefs.current[i] = el;
+              }}>
+              <ArticleCard article={article} index={i} />
+            </div>
+          ))}
+          {isFetchingNextPage && <LoadingSkeletons />}
+        </div>
+      )}
 
       {/* Global fullscreen button */}
       {expandedIndex === null && (

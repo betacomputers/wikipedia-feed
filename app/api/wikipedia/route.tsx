@@ -528,6 +528,10 @@ const CATEGORIES: { label: string; keywords: string[] }[] = [
   },
 ];
 
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function categorize(title: string, description: string | null): string | null {
   const haystack = `${title} ${description ?? ""}`.toLowerCase();
   let bestLabel: string | null = null;
@@ -544,27 +548,74 @@ function categorize(title: string, description: string | null): string | null {
   return bestScore > 0 ? bestLabel : null;
 }
 
-export async function GET() {
-  try {
-    // Fetch 10 random articles in parallel
-    const fetches = Array.from({ length: 10 }, () =>
-      fetch("https://en.wikipedia.org/api/rest_v1/page/random/summary", {
+async function fetchRandomSummary(): Promise<Record<string, unknown>> {
+  const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/random/summary", {
+    headers: { "Api-User-Agent": "wikipedia-feed/1.0" },
+    next: { revalidate: 0 },
+  });
+  return res.json();
+}
+
+async function fetchByCategory(category: string): Promise<Record<string, unknown>[]> {
+  const cat = CATEGORIES.find((c) => c.label === category);
+  if (!cat) return [];
+
+  // Pick a random search term from this category
+  const searchTerm = pick(cat.keywords);
+
+  // Search Wikipedia for articles matching the term
+  const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&srlimit=20&format=json&origin=*`;
+  const searchRes = await fetch(searchUrl, { headers: { "Api-User-Agent": "wikipedia-feed/1.0" } });
+  const searchData = await searchRes.json();
+  const results: { title: string }[] = searchData?.query?.search ?? [];
+  if (results.length === 0) return [];
+
+  // Pick 3 random results and fetch their summaries in parallel
+  const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 3);
+  const summaries = await Promise.all(
+    shuffled.map((r) =>
+      fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(r.title)}`, {
         headers: { "Api-User-Agent": "wikipedia-feed/1.0" },
         next: { revalidate: 0 },
-      }).then((r) => r.json()),
-    );
+      })
+        .then((res) => res.json())
+        .catch(() => null),
+    ),
+  );
+  return summaries.filter(Boolean);
+}
 
-    const articles = await Promise.all(fetches);
+export async function GET(req: Request) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const category = searchParams.get("category");
+
+    let articles: Record<string, unknown>[] = [];
+
+    if (!category || category === "All") {
+      // Random mode: fetch 10 in parallel
+      articles = await Promise.all(Array.from({ length: 10 }, fetchRandomSummary));
+    } else {
+      // Category mode: run multiple search rounds until we have 10
+      while (articles.length < 10) {
+        const batch = await fetchByCategory(category);
+        articles.push(...batch);
+      }
+      articles = articles.slice(0, 10);
+    }
 
     const cleaned = articles.map((a) => ({
       id: a.pageid,
       title: a.title,
       extract: a.extract,
-      thumbnail: a.thumbnail?.source ?? null,
+      thumbnail: (a.thumbnail as { source?: string })?.source ?? null,
       url:
-        a.content_urls?.desktop?.page ??
-        `https://en.wikipedia.org/wiki/${encodeURIComponent(a.title)}`,
-      description: categorize(a.title, a.description ?? null),
+        (a.content_urls as { desktop?: { page?: string } })?.desktop?.page ??
+        `https://en.wikipedia.org/wiki/${encodeURIComponent(a.title as string)}`,
+      description:
+        category && category !== "All"
+          ? category
+          : categorize(a.title as string, (a.description as string) ?? null),
     }));
 
     return NextResponse.json({ articles: cleaned });
