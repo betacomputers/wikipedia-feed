@@ -358,15 +358,37 @@ async function fetchRandomSummary(): Promise<Record<string, unknown>> {
 async function fetchByCategory(category: string): Promise<Record<string, unknown>[]> {
   const terms = SEARCH_TERMS[category] ?? [];
   if (!terms.length) return [];
-  const searchTerm = pick(terms);
-  const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&srlimit=20&format=json&origin=*`;
-  const searchRes = await fetch(searchUrl, { headers: { "Api-User-Agent": "wikipedia-feed/1.0" } });
-  const searchData = await searchRes.json();
-  const results: { title: string }[] = searchData?.query?.search ?? [];
-  if (!results.length) return [];
-  const shuffled = results.sort(() => Math.random() - 0.5).slice(0, 3);
+
+  // Run 4 searches in parallel with different random terms
+  const selectedTerms = [...terms].sort(() => Math.random() - 0.5).slice(0, 4);
+
+  const batches = await Promise.all(
+    selectedTerms.map(async (searchTerm) => {
+      const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(searchTerm)}&srlimit=10&format=json&origin=*`;
+      const searchRes = await fetch(searchUrl, {
+        headers: { "Api-User-Agent": "wikipedia-feed/1.0" },
+      });
+      const searchData = await searchRes.json();
+      const results: { title: string }[] = searchData?.query?.search ?? [];
+      return results;
+    }),
+  );
+
+  // Deduplicate and shuffle all found titles
+  const seen = new Set<string>();
+  const allResults = batches
+    .flat()
+    .filter((r) => {
+      if (seen.has(r.title)) return false;
+      seen.add(r.title);
+      return true;
+    })
+    .sort(() => Math.random() - 0.5)
+    .slice(0, 10);
+
+  // Fetch all 10 summaries in parallel
   const summaries = await Promise.all(
-    shuffled.map((r) =>
+    allResults.map((r) =>
       fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(r.title)}`, {
         headers: { "Api-User-Agent": "wikipedia-feed/1.0" },
         next: { revalidate: 0 },
@@ -389,11 +411,7 @@ export async function GET(req: Request) {
       // Random mode: fetch 10 in parallel
       articles = await Promise.all(Array.from({ length: 10 }, fetchRandomSummary));
     } else {
-      // Category mode: run multiple search rounds until we have 10
-      while (articles.length < 10) {
-        const batch = await fetchByCategory(category);
-        articles.push(...batch);
-      }
+      articles = await fetchByCategory(category);
       articles = articles.slice(0, 10);
     }
 
