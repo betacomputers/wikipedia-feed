@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import ArticleFeed from "@/components/articleFeed";
 import SearchFeed from "@/components/searchFeed";
 import LikesDrawer from "@/components/likesDrawer";
+import { useSearchHistory } from "@/hooks/useSearchHistory";
 
 type Tab = "home" | "search" | "graph";
 
@@ -13,6 +14,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { history, add, remove } = useSearchHistory();
 
   useEffect(() => {
     if ("scrollRestoration" in history) {
@@ -32,9 +34,15 @@ export default function Home() {
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  const runSearch = (q: string) => {
+    setSearchQuery(q);
+    setActiveQuery(q);
+    add(q);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) setActiveQuery(searchQuery.trim());
+    if (searchQuery.trim()) runSearch(searchQuery.trim());
   };
 
   return (
@@ -120,6 +128,55 @@ export default function Home() {
               )}
             </div>
           </form>
+
+          {/* Search history */}
+          {!activeQuery && history.length > 0 && (
+            <div className="mb-8">
+              <p className="text-[#444] font-mono text-xs uppercase tracking-widest mb-3">Recent</p>
+              <div className="flex flex-col gap-1">
+                {history.map((q) => (
+                  <div key={q} className="flex items-center justify-between group px-1 py-1.5">
+                    <button
+                      onClick={() => runSearch(q)}
+                      className="flex items-center gap-3 text-[#888] hover:text-white transition-colors font-mono text-sm text-left">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="size-3.5 text-[#444] shrink-0">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+                        />
+                      </svg>
+                      {q}
+                    </button>
+                    <button
+                      onClick={() => remove(q)}
+                      className="text-[#333] hover:text-[#888] transition-colors opacity-0 group-hover:opacity-100">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth="1.5"
+                        stroke="currentColor"
+                        className="size-3.5">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M6 18 18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {activeQuery && <SearchFeed query={activeQuery} />}
         </div>
       )}
