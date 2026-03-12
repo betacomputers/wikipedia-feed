@@ -14,8 +14,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
-  const { history, add, remove } = useSearchHistory();
-
+  const { history: searchHistory, add, remove, clear } = useSearchHistory();
   useEffect(() => {
     if ("scrollRestoration" in history) {
       history.scrollRestoration = "manual";
@@ -130,12 +129,19 @@ export default function Home() {
           </form>
 
           {/* Search history */}
-          {!activeQuery && history.length > 0 && (
+          {!activeQuery && searchHistory.length > 0 && (
             <div className="mb-8">
-              <p className="text-[#444] font-mono text-xs uppercase tracking-widest mb-3">Recent</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[#444] font-mono text-xs uppercase tracking-widest">Recent</p>
+                <button
+                  onClick={clear}
+                  className="text-[#444] hover:text-white font-mono text-xs transition-colors">
+                  Clear all
+                </button>
+              </div>
               <div className="flex flex-col gap-1">
-                {history.map((q) => (
-                  <div key={q} className="flex items-center justify-between group px-1 py-1.5">
+                {searchHistory.map((q) => (
+                  <div key={q} className="flex items-center justify-between px-1 py-1.5">
                     <button
                       onClick={() => runSearch(q)}
                       className="flex items-center gap-3 text-[#888] hover:text-white transition-colors font-mono text-sm text-left">
@@ -156,7 +162,7 @@ export default function Home() {
                     </button>
                     <button
                       onClick={() => remove(q)}
-                      className="text-[#333] hover:text-[#888] transition-colors opacity-0 group-hover:opacity-100">
+                      className="text-[#444] hover:text-white transition-colors">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         fill="none"

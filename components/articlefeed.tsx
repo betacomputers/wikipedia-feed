@@ -125,7 +125,7 @@ export default function ArticleFeed() {
         <button
           onClick={openFullscreen}
           aria-label="Enter fullscreen"
-          className="fixed bottom-6 right-6 z-30 bg-[#111] border border-[#2a2a2a] hover:border-[#555] text-white/50 hover:text-white rounded-full p-3 transition-all duration-200 shadow-lg">
+          className="fixed bottom-20 right-6 z-30 bg-[#111] border border-[#2a2a2a] hover:border-[#555] text-white/50 hover:text-white rounded-full p-3 transition-all duration-200 shadow-lg">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
