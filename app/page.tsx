@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import ArticleFeed from "@/components/articleFeed";
 import SearchFeed from "@/components/searchFeed";
 import LikesDrawer from "@/components/likesDrawer";
@@ -12,6 +12,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeQuery, setActiveQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if ("scrollRestoration" in history) {
@@ -24,6 +25,16 @@ export default function Home() {
     setActiveTab("home");
     setSearchQuery("");
     setActiveQuery("");
+  };
+
+  const goSearch = () => {
+    setActiveTab("search");
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) setActiveQuery(searchQuery.trim());
   };
 
   return (
@@ -58,10 +69,60 @@ export default function Home() {
       </header>
 
       {/* Feed */}
-      <div className={activeQuery ? "hidden" : ""}>
+      <div className={activeTab !== "home" ? "hidden" : ""}>
         <ArticleFeed />
       </div>
-      {activeQuery && <SearchFeed query={activeQuery} />}
+
+      {/* Search view */}
+      {activeTab === "search" && (
+        <div>
+          <form onSubmit={handleSearch} className="mb-8">
+            <div className="flex items-center gap-3 bg-[#111] border border-[#222] rounded-2xl px-4 py-3">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="1.5"
+                stroke="currentColor"
+                className="size-4 text-[#555] shrink-0">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
+                />
+              </svg>
+              <input
+                ref={inputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search Wikipedia..."
+                className="flex-1 bg-transparent text-white text-sm font-mono outline-none placeholder:text-[#444]"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setActiveQuery("");
+                  }}
+                  className="text-[#555] hover:text-white transition-colors shrink-0">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="1.5"
+                    stroke="currentColor"
+                    className="size-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </form>
+          {activeQuery && <SearchFeed query={activeQuery} />}
+        </div>
+      )}
 
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a] border-t border-[#1a1a1a]">
@@ -94,6 +155,40 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"
+                />
+              </svg>
+            )}
+          </button>
+
+          {/* Search */}
+          <button
+            onClick={goSearch}
+            aria-label="Search"
+            className={`flex items-center justify-center transition-all duration-200 ${activeTab === "search" ? "text-white" : "text-white/30 hover:text-white/60"}`}>
+            {activeTab === "search" ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="size-5">
+                <path
+                  fillRule="evenodd"
+                  d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="1.5"
+                stroke="currentColor"
+                className="size-5">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z"
                 />
               </svg>
             )}
