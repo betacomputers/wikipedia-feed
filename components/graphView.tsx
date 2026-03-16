@@ -31,34 +31,29 @@ export default function GraphView({
   seedTitle?: string | null;
   onSeedConsumed?: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const d3Ref = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null); // React owns this
+  const d3Ref = useRef<HTMLDivElement>(null); // D3 owns this
   const [selected, setSelected] = useState<Node | null>(null);
   const [nodeCount, setNodeCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expanding, setExpanding] = useState<number | null>(null);
 
-  // Keep mutable refs for D3 to own
   const nodesRef = useRef<Node[]>([]);
   const linksRef = useRef<Link[]>([]);
   const simRef = useRef<d3.Simulation<Node, Link> | null>(null);
-  const selectedRef = useRef<Node | null>(null);
-  selectedRef.current = selected;
 
   const redraw = useCallback(() => {
-    if (!containerRef.current) return;
-    const svg = d3.select(containerRef.current).select<SVGSVGElement>("svg");
+    if (!d3Ref.current) return;
+    const svg = d3.select(d3Ref.current).select<SVGSVGElement>("svg");
 
-    // Edges
     const link = svg
       .select(".links")
       .selectAll<SVGLineElement, Link>("line")
       .data(linksRef.current, (_d, i) => String(i))
       .join("line")
-      .attr("stroke", "#252525")
+      .attr("stroke", "#2a2a2a")
       .attr("stroke-width", 1);
 
-    // Nodes
     const node = svg
       .select(".nodes")
       .selectAll<SVGGElement, Node>("g")
@@ -89,7 +84,6 @@ export default function GraphView({
           expandNode(d);
         });
 
-        // Drag
         g.call(
           d3
             .drag<SVGGElement, Node>()
@@ -112,20 +106,17 @@ export default function GraphView({
         return g;
       });
 
-    // Update circle fill/stroke for expanded state
     node
       .select("circle")
       .attr("fill", (d) => (d.depth === 0 ? "#fff" : d.expanded ? "#333" : "#1a1a1a"))
       .attr("stroke", (d) => (d.depth === 0 ? "none" : d.expanded ? "#888" : "#555"));
 
-    // Tick
     simRef.current?.on("tick", () => {
       link
         .attr("x1", (d) => (d.source as Node).x ?? 0)
         .attr("y1", (d) => (d.source as Node).y ?? 0)
         .attr("x2", (d) => (d.target as Node).x ?? 0)
         .attr("y2", (d) => (d.target as Node).y ?? 0);
-
       node.attr("transform", (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
   }, []);
@@ -161,9 +152,8 @@ export default function GraphView({
           };
         });
 
-        const newLinks2: Link[] = newNodes.map((n) => ({ source: node.id, target: n.id }));
+        const newEdges: Link[] = newNodes.map((n) => ({ source: node.id, target: n.id }));
 
-        // Cross edges
         const existingByTitle = new Map(nodesRef.current.map((n) => [n.title, n.id]));
         const newByTitle = new Map(newNodes.map((n) => [n.title, n.id]));
         const crossLinks: Link[] = [];
@@ -176,12 +166,11 @@ export default function GraphView({
           if (nid !== undefined) crossLinks.push({ source: e.id, target: nid });
         }
 
-        // Mark expanded
         const expandedNode = nodesRef.current.find((n) => n.id === node.id);
         if (expandedNode) expandedNode.expanded = true;
 
         nodesRef.current = [...nodesRef.current, ...newNodes];
-        linksRef.current = [...linksRef.current, ...newLinks2, ...crossLinks];
+        linksRef.current = [...linksRef.current, ...newEdges, ...crossLinks];
 
         simRef
           .current!.nodes(nodesRef.current)
@@ -206,7 +195,6 @@ export default function GraphView({
     [expanding, redraw],
   );
 
-  // Bootstrap
   useEffect(() => {
     if (!d3Ref.current) return;
     const el = d3Ref.current;
@@ -215,13 +203,11 @@ export default function GraphView({
     const cx = width / 2;
     const cy = height / 2;
 
-    // Build SVG
     const svg = d3.select(el).append("svg").attr("width", "100%").attr("height", "100%");
 
     svg.append("g").attr("class", "links");
     svg.append("g").attr("class", "nodes");
 
-    // Zoom
     svg.call(
       d3
         .zoom<SVGSVGElement, unknown>()
@@ -229,10 +215,13 @@ export default function GraphView({
         .on("zoom", (event) => {
           svg.select(".links").attr("transform", event.transform);
           svg.select(".nodes").attr("transform", event.transform);
+          const { x, y, k } = event.transform;
+          d3.select(el)
+            .style("background-position", `${x}px ${y}px`)
+            .style("background-size", `${24 * k}px ${24 * k}px`);
         }),
     );
 
-    // Sim
     const sim = d3
       .forceSimulation<Node>()
       .force("charge", d3.forceManyBody().strength(-200))
@@ -245,18 +234,28 @@ export default function GraphView({
 
     simRef.current = sim;
 
-    // Fetch root
     (async () => {
       setLoading(true);
       try {
-        // If a seed title was provided, fetch that article's summary first
-        let rootData: Record<string, unknown>;
+        let rootData: {
+          node: {
+            id: number;
+            title: string;
+            extract: string;
+            thumbnail: string | null;
+            url: string;
+          };
+          links: { title: string }[];
+        };
+
         if (seedTitle) {
           const summaryRes = await fetch(
             `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(seedTitle)}`,
             { headers: { "Api-User-Agent": "wikipedia-feed/1.0" } },
           );
           const s = await summaryRes.json();
+          const linksRes = await fetch(`/api/graph?title=${encodeURIComponent(seedTitle)}`);
+          const linksData = await linksRes.json();
           rootData = {
             node: {
               id: s.pageid,
@@ -265,22 +264,30 @@ export default function GraphView({
               thumbnail: s.thumbnail?.source ?? null,
               url: s.content_urls?.desktop?.page ?? "",
             },
+            links: linksData.links ?? [],
           };
-          // Fetch links separately
-          const linksRes = await fetch(`/api/graph?title=${encodeURIComponent(seedTitle)}`);
-          const linksData = await linksRes.json();
-          rootData.links = linksData.links ?? [];
           onSeedConsumed?.();
         } else {
           const res = await fetch("/api/graph");
           rootData = await res.json();
         }
-        const data = rootData;
-        if (!data.node) return;
 
-        const root: Node = { ...data.node, depth: 0, expanded: true, x: cx, y: cy };
-        const leaves: Node[] = (data.links as { title: string }[]).map((l, i) => {
-          const angle = (2 * Math.PI * i) / data.links.length;
+        if (!rootData.node) return;
+
+        const root: Node = {
+          id: rootData.node.id,
+          title: rootData.node.title,
+          extract: rootData.node.extract,
+          thumbnail: rootData.node.thumbnail,
+          url: rootData.node.url,
+          depth: 0,
+          expanded: true,
+          x: cx,
+          y: cy,
+        };
+
+        const leaves: Node[] = rootData.links.map((l, i) => {
+          const angle = (2 * Math.PI * i) / rootData.links.length;
           return {
             id: nextId(),
             title: l.title,
@@ -324,18 +331,18 @@ export default function GraphView({
   }, []);
 
   return (
-    <div ref={containerRef} className="fixed inset-0 bg-[#080808]" style={{ bottom: "57px" }}>
+    <div ref={wrapperRef} className="fixed inset-0 bg-[#080808]" style={{ bottom: "57px" }}>
       <div
-        ref={containerRef}
-        className="fixed inset-0 bg-[#080808]"
+        ref={d3Ref}
+        className="absolute inset-0"
         style={{
-          bottom: "57px",
           backgroundImage: "radial-gradient(circle, #222 1px, transparent 1px)",
           backgroundSize: "24px 24px",
-        }}></div>
-      <div ref={d3Ref} className="w-full h-full" />
+        }}
+      />
+
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <p className="text-[#444] font-mono text-sm animate-pulse">Building graph...</p>
         </div>
       )}
