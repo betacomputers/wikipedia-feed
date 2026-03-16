@@ -325,6 +325,14 @@ export default function GraphView({
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-[#080808]" style={{ bottom: "57px" }}>
+      <div
+        ref={containerRef}
+        className="fixed inset-0 bg-[#080808]"
+        style={{
+          bottom: "57px",
+          backgroundImage: "radial-gradient(circle, #222 1px, transparent 1px)",
+          backgroundSize: "24px 24px",
+        }}></div>
       <div ref={d3Ref} className="w-full h-full" />
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center">
