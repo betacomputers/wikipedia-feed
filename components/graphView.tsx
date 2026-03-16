@@ -24,8 +24,15 @@ interface Link extends d3.SimulationLinkDatum<Node> {
 let uid = -1;
 const nextId = () => uid--;
 
-export default function GraphView() {
+export default function GraphView({
+  seedTitle,
+  onSeedConsumed,
+}: {
+  seedTitle?: string | null;
+  onSeedConsumed?: () => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const d3Ref = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState<Node | null>(null);
   const [nodeCount, setNodeCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -201,8 +208,8 @@ export default function GraphView() {
 
   // Bootstrap
   useEffect(() => {
-    if (!containerRef.current) return;
-    const el = containerRef.current;
+    if (!d3Ref.current) return;
+    const el = d3Ref.current;
     const width = el.clientWidth || window.innerWidth;
     const height = el.clientHeight || window.innerHeight;
     const cx = width / 2;
@@ -242,8 +249,33 @@ export default function GraphView() {
     (async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/graph");
-        const data = await res.json();
+        // If a seed title was provided, fetch that article's summary first
+        let rootData: Record<string, unknown>;
+        if (seedTitle) {
+          const summaryRes = await fetch(
+            `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(seedTitle)}`,
+            { headers: { "Api-User-Agent": "wikipedia-feed/1.0" } },
+          );
+          const s = await summaryRes.json();
+          rootData = {
+            node: {
+              id: s.pageid,
+              title: s.title,
+              extract: (s.extract as string)?.slice(0, 200) ?? "",
+              thumbnail: s.thumbnail?.source ?? null,
+              url: s.content_urls?.desktop?.page ?? "",
+            },
+          };
+          // Fetch links separately
+          const linksRes = await fetch(`/api/graph?title=${encodeURIComponent(seedTitle)}`);
+          const linksData = await linksRes.json();
+          rootData.links = linksData.links ?? [];
+          onSeedConsumed?.();
+        } else {
+          const res = await fetch("/api/graph");
+          rootData = await res.json();
+        }
+        const data = rootData;
         if (!data.node) return;
 
         const root: Node = { ...data.node, depth: 0, expanded: true, x: cx, y: cy };
@@ -293,6 +325,7 @@ export default function GraphView() {
 
   return (
     <div ref={containerRef} className="fixed inset-0 bg-[#080808]" style={{ bottom: "57px" }}>
+      <div ref={d3Ref} className="w-full h-full" />
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center">
           <p className="text-[#444] font-mono text-sm animate-pulse">Building graph...</p>
