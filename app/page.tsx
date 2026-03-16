@@ -5,6 +5,7 @@ import ArticleFeed from "@/components/articleFeed";
 import SearchFeed from "@/components/searchFeed";
 import LikesDrawer from "@/components/likesDrawer";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
+import GraphView from "@/components/graphView";
 
 type Tab = "home" | "search" | "graph";
 
@@ -15,6 +16,7 @@ export default function Home() {
   const [activeQuery, setActiveQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
   const { history: searchHistory, add, remove, clear } = useSearchHistory();
+
   useEffect(() => {
     if ("scrollRestoration" in history) {
       history.scrollRestoration = "manual";
@@ -188,11 +190,7 @@ export default function Home() {
       )}
 
       {/* Graph view */}
-      {activeTab === "graph" && (
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <p className="text-[#333] font-mono text-sm">Lorem ipsum dolor sit amet.</p>
-        </div>
-      )}
+      {activeTab === "graph" && <GraphView />}
 
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a] border-t border-[#1a1a1a]">
