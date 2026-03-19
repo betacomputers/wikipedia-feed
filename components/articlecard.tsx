@@ -62,12 +62,16 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
               href={article.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               className="text-xs font-mono uppercase tracking-wider text-[#666] hover:text-white transition-colors duration-200 underline underline-offset-4">
               Read on Wikipedia →
             </a>
 
             <button
-              onClick={() => toggle(article)}
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle(article);
+              }}
               aria-label={liked ? "Unlike" : "Like"}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-mono transition-all duration-200 border ${
                 liked
