@@ -14,51 +14,15 @@ function sanitize(html: string): string {
     .replace(/<figure[^>]*>[\s\S]*?<\/figure>/gi, "")
     .replace(/<table[\s\S]*?<\/table>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<sup[^>]*>[\s\S]*?<\/sup>/gi, "")
-    .replace(/<span class="mw-editsection"[\s\S]*?<\/span>/gi, "")
+    .replace(/<span[^>]*class="[^"]*mw-editsection[^"]*"[^>]*>[\s\S]*?<\/span>/gi, "")
     .replace(/\s*style="[^"]*"/gi, "")
     .replace(/\s*class="[^"]*"/gi, "")
     .replace(/\s*id="[^"]*"/gi, "")
-    .replace(/<a\s[^>]*>/gi, "")
-    .replace(/<\/a>/gi, "")
-    .replace(/<span[^>]*>/gi, "")
-    .replace(/<\/span>/gi, "")
-    .replace(/<div[^>]*>/gi, "")
-    .replace(/<\/div>/gi, "")
+    .replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, "$1")
+    .replace(/<span[^>]*>([\s\S]*?)<\/span>/gi, "$1")
     .trim();
-}
-
-async function fetchSections(title: string): Promise<Section[]> {
-  const res = await fetch(
-    `https://en.wikipedia.org/api/rest_v1/page/mobile-sections/${encodeURIComponent(title)}`,
-    { headers: { "Api-User-Agent": "wikipedia-feed/1.0" } },
-  );
-  if (!res.ok) return [];
-  const data = await res.json();
-
-  const sections: Section[] = [];
-
-  if (data.lead?.sections?.[0]?.text) {
-    sections.push({ title: "", content: data.lead.sections[0].text });
-  }
-
-  const skip = new Set([
-    "references",
-    "external links",
-    "notes",
-    "see also",
-    "further reading",
-    "bibliography",
-    "footnotes",
-  ]);
-  for (const section of data.remaining?.sections ?? []) {
-    if (section.toclevel === 1 && skip.has(section.line?.toLowerCase())) continue;
-    if (section.text?.trim()) {
-      sections.push({ title: section.line ?? "", content: section.text });
-    }
-  }
-
-  return sections;
 }
 
 export default function ArticleOverlay({
@@ -70,6 +34,7 @@ export default function ArticleOverlay({
 }) {
   const [sections, setSections] = useState<Section[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -80,10 +45,19 @@ export default function ArticleOverlay({
   }, []);
 
   useEffect(() => {
-    fetchSections(article.title).then((s) => {
-      setSections(s);
-      setLoading(false);
-    });
+    setLoading(true);
+    setError(false);
+    fetch(`/api/article?title=${encodeURIComponent(article.title)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.sections?.length) {
+          setSections(data.sections);
+        } else {
+          setError(true);
+        }
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
   }, [article.title]);
 
   useEffect(() => {
@@ -100,8 +74,8 @@ export default function ArticleOverlay({
       animate={{ y: 0 }}
       exit={{ y: "100%" }}
       transition={{ type: "spring", damping: 32, stiffness: 280 }}
-      className="fixed inset-0 z-50 bg-[#080808] flex flex-col"
-      style={{ bottom: "57px" }}>
+      className="fixed inset-0 z-50 bg-[#080808] flex flex-col overflow-hidden">
+      {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-[#1a1a1a] shrink-0">
         <button
           onClick={onClose}
@@ -130,20 +104,20 @@ export default function ArticleOverlay({
         </a>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      {/* Scrollable content */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
         {article.thumbnail && (
-          <div className="relative h-64 md:h-80 w-full overflow-hidden">
+          <div className="relative h-56 w-full overflow-hidden shrink-0">
             <img
               src={article.thumbnail}
               alt={article.title}
               className="w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-linear-to-t from-[#080808] via-[#080808]/40 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-[#080808]/30 to-transparent" />
           </div>
         )}
 
-        <div
-          className={`max-w-2xl mx-auto px-6 pb-16 ${article.thumbnail ? "-mt-16 relative" : "pt-10"}`}>
+        <div className="max-w-2xl mx-auto px-6 pt-6 pb-24">
           {article.description && (
             <span className="inline-block text-xs font-mono uppercase tracking-widest text-[#555] mb-3">
               {article.description}
@@ -154,17 +128,21 @@ export default function ArticleOverlay({
           </h1>
           <div className="w-12 h-px bg-[#333] mb-8" />
 
-          {loading ? (
+          {loading && (
             <div className="space-y-3">
-              {[...Array(6)].map((_, i) => (
+              {[...Array(8)].map((_, i) => (
                 <div
                   key={i}
-                  className={`bg-[#111] rounded animate-pulse ${i === 0 ? "h-4 w-3/4" : "h-3"}`}
+                  className={`bg-[#111] rounded animate-pulse ${i % 3 === 0 ? "h-4 w-3/4" : "h-3"}`}
                 />
               ))}
             </div>
-          ) : (
-            <div className="space-y-10">
+          )}
+
+          {!loading && error && <p className="text-[#666] text-sm font-mono">{article.extract}</p>}
+
+          {!loading && !error && (
+            <div className="space-y-8">
               {sections.map((section, i) => (
                 <div key={i}>
                   {section.title && (
@@ -173,7 +151,7 @@ export default function ArticleOverlay({
                     </h2>
                   )}
                   <div
-                    className="wiki-content text-[#999] text-sm leading-relaxed"
+                    className="wiki-content"
                     dangerouslySetInnerHTML={{ __html: sanitize(section.content) }}
                   />
                 </div>
