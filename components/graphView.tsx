@@ -195,6 +195,33 @@ export default function GraphView({
     [expanding, redraw],
   );
 
+  const [selectedLoading, setSelectedLoading] = useState(false);
+
+  // Fetch summary for leaf nodes that don't have a URL yet
+  useEffect(() => {
+    if (!selected || selected.url) return;
+    setSelectedLoading(true);
+    fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(selected.title)}`,
+      {
+        headers: { "Api-User-Agent": "wikipedia-feed/1.0" },
+      },
+    )
+      .then((r) => r.json())
+      .then((data) => {
+        const url = data.content_urls?.desktop?.page ?? "";
+        const extract = data.extract?.slice(0, 200) ?? "";
+        const node = nodesRef.current.find((n) => n.id === selected.id);
+        if (node) {
+          node.url = url;
+          node.extract = extract;
+        }
+        setSelected((prev) => (prev?.id === selected.id ? { ...prev, url, extract } : prev));
+      })
+      .catch(() => {})
+      .finally(() => setSelectedLoading(false));
+  }, [selected?.id]);
+
   useEffect(() => {
     if (!d3Ref.current) return;
     const el = d3Ref.current;
@@ -381,7 +408,7 @@ export default function GraphView({
             </p>
           )}
           <div className="flex items-center gap-2 flex-wrap">
-            {selected.url && (
+            {selected.url ? (
               <a
                 href={selected.url}
                 target="_blank"
@@ -389,6 +416,10 @@ export default function GraphView({
                 className="text-xs font-mono text-[#555] hover:text-white transition-colors border border-[#222] hover:border-[#444] rounded-full px-3 py-1.5">
                 Read ↗
               </a>
+            ) : (
+              <span className="text-xs font-mono text-[#333] border border-[#1a1a1a] rounded-full px-3 py-1.5">
+                {selectedLoading ? "Loading…" : "Read ↗"}
+              </span>
             )}
             {!selected.expanded && selected.depth < MAX_DEPTH && nodeCount < MAX_NODES && (
               <button
