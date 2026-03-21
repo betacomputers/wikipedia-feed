@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLikes } from "@/hooks/useLikes";
 import ArticleOverlay from "./articleOverlay";
 
@@ -111,8 +111,9 @@ export default function ArticleCard({ article, index }: ArticleCardProps) {
           </div>
         </div>
       </motion.article>
-
-      {overlayOpen && <ArticleOverlay article={article} onClose={() => setOverlayOpen(false)} />}
+      <AnimatePresence>
+        {overlayOpen && <ArticleOverlay article={article} onClose={() => setOverlayOpen(false)} />}
+      </AnimatePresence>{" "}
     </>
   );
 }
