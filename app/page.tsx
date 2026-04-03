@@ -6,8 +6,9 @@ import SearchFeed from "@/components/searchFeed";
 import LikesDrawer from "@/components/likesDrawer";
 import { useSearchHistory } from "@/hooks/useSearchHistory";
 import GraphView from "@/components/graphView";
+import WikiPack from "@/components/wikiPack";
 
-type Tab = "home" | "search" | "graph";
+type Tab = "home" | "search" | "graph" | "cards";
 
 export default function Home() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -191,6 +192,7 @@ export default function Home() {
 
       {/* Graph view */}
       {activeTab === "graph" && <GraphView />}
+      {activeTab === "cards" && <WikiPack />}
 
       {/* Bottom nav */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0a] border-t border-[#1a1a1a]">
@@ -291,6 +293,36 @@ export default function Home() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z"
+                />
+              </svg>
+            )}
+          </button>
+
+          {/* Cards */}
+          <button
+            onClick={() => setActiveTab("cards")}
+            aria-label="Cards"
+            className={`flex items-center justify-center transition-all duration-200 ${activeTab === "cards" ? "text-white" : "text-white/30 hover:text-white/60"}`}>
+            {activeTab === "cards" ? (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="size-5">
+                <path d="M11.25 3v4.046a3 3 0 0 0-4.277 4.204H1.5v-6A2.25 2.25 0 0 1 3.75 3h7.5ZM12.75 3v4.011a3 3 0 0 1 4.239 4.239H22.5v-6A2.25 2.25 0 0 0 20.25 3h-7.5ZM22.5 12.75h-8.983a4.125 4.125 0 0 1-4.5 0H1.5v6A2.25 2.25 0 0 0 3.75 21h16.5a2.25 2.25 0 0 0 2.25-2.25v-6ZM12 9a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z" />
+              </svg>
+            ) : (
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="1.5"
+                stroke="currentColor"
+                className="size-5">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 9.375 7.5H12m0-2.625V7.5m0-2.625A2.625 2.625 0 1 1 14.625 7.5H12m0 0V21m-8.625-9.75h18c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125h-18c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z"
                 />
               </svg>
             )}
